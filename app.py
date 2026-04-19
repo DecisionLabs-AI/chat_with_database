@@ -8,7 +8,7 @@ import json
 # =========================
 # CONFIG
 # =========================
-gemini_api_key = st.secrets["AIzaSyDpnX3APkgTymW4JT1qUCt8dtJHRvUUjOg"]
+gemini_api_key = st.secrets["gemini_api_key"]
 gmn_client = genai.Client(api_key=gemini_api_key)
 
 db_name = "test_database.db"
@@ -39,13 +39,16 @@ data_dict_text = """
 # =========================
 def query_to_dataframe(sql_query: str, database_name: str):
     """Run SQL query and return result as DataFrame."""
+    connection = None
     try:
         connection = sqlite3.connect(database_name)
         result_df = pd.read_sql_query(sql_query, connection)
-        connection.close()
         return result_df
     except Exception as e:
         return f"Database Error: {e}"
+    finally:
+        if connection is not None:
+            connection.close()
 
 
 def generate_gemini_answer(prompt: str, is_json: bool = False) -> str:
@@ -166,21 +169,26 @@ def generate_summary_answer(user_question: str) -> str:
 # =========================
 # STREAMLIT UI
 # =========================
-st.set_page_config(page_title="Gemini Chat with Database", page_icon="💬", layout="centered")
+st.set_page_config(
+    page_title="Gemini Chat with Database",
+    page_icon="💬",
+    layout="centered"
+)
 
 st.title("Gemini Chat with Database")
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# show chat history
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# user input
 if prompt := st.chat_input("พิมพ์คำถามที่นี่..."):
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    st.session_state.messages.append({
+        "role": "user",
+        "content": prompt
+    })
 
     with st.chat_message("user"):
         st.markdown(prompt)
@@ -190,4 +198,7 @@ if prompt := st.chat_input("พิมพ์คำถามที่นี่..."
             response = generate_summary_answer(prompt)
             st.markdown(response)
 
-    st.session_state.messages.append({"role": "assistant", "content": response})
+    st.session_state.messages.append({
+        "role": "assistant",
+        "content": response
+    })
